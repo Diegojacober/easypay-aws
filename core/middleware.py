@@ -39,6 +39,7 @@ class LoginAttemptMiddleware:
                 user = User.objects.filter(email=email).first()
 
                 if user and response.status_code == status.HTTP_401_UNAUTHORIZED:
+                    
                     user.login_attempts += 1
                     user.save()
 
@@ -51,8 +52,9 @@ class LoginAttemptMiddleware:
                             {'detail': 'Sua conta foi bloqueada. Tente novamente após 15 minutos.'},
                             status=status.HTTP_401_UNAUTHORIZED
                         )
-                        
-                if user.login_attempts >= 3 and user.locked_at != None and user.unlocked_at != None and status.HTTP_200_OK:
+
+                if user and user.login_attempts >= 3 and user.locked_at != None and user.unlocked_at != None and status.HTTP_200_OK:
+                    
                     if timezone.now() >= user.unlocked_at:
                         user.login_attempts = 0
                         user.locked_at = None
