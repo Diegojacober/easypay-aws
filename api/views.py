@@ -234,6 +234,16 @@ class CartaoGastoViewset(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.
     authentication_classes = [authenticationJWT.JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        """Retrieve conta for authenticated user."""
+        conta = Conta.objects.filter(user=self.request.user).first()
+        cartao = Cartao.objects.filter(conta=conta).first()
+        queryset = self.queryset
+
+        return queryset.filter(
+            cartao=cartao
+        ).order_by('-id').distinct()
+
     def create(self, request):
         """Função para criar um gasto no cartão"""
         serializer = serializers.CartaoGastoSerializer(data=request.data)
@@ -244,7 +254,6 @@ class CartaoGastoViewset(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.
             cartao_selecionado = get_object_or_404(Cartao.objects.filter(conta=conta).filter(
                 numero=cartao["numero"]).filter(cvv=cartao["cvv"]).filter(nome=cartao["nome"]))
 
-            
             if (serializer.validated_data.get("valor") > cartao_selecionado.limite):
                 return Response({"message": "Limite insuficiente"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -254,11 +263,10 @@ class CartaoGastoViewset(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.
                 nome=serializer.validated_data.get("nome")
             )
             gasto.save()
-            
+
             return Response({"message": "Gasto salvo"}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
 
 
 class EmprestimoViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
