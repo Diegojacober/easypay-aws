@@ -14,6 +14,7 @@ router = DefaultRouter()
 router.register('accounts', views.AccountViewSet)
 router.register('transferencias', views.TransferenciaViewSet)
 router.register('cartoes', views.CartaoViewSet)
+router.register('gastos', views.CartaoGastoViewset)
 router.register('emprestimos', views.EmprestimoViewSet)
 
 app_name = 'api'

@@ -44,7 +44,7 @@ class UserManager(BaseUserManager):
 
 class Transferencia(models.Model):
     """Transferencias entre contas."""
-    value = models.DecimalField(max_digits=5, decimal_places=2)
+    value = models.DecimalField(max_digits=10, decimal_places=2)
     from_account = models.ForeignKey(
         'core.Conta',
         on_delete=models.DO_NOTHING,
@@ -65,7 +65,7 @@ class Conta(models.Model):
     """Conta para cada um dos clientes"""
     agencia = models.CharField(max_length=4)
     numero = models.CharField(max_length=8)
-    saldo = models.DecimalField(max_digits=5, decimal_places=2)
+    saldo = models.DecimalField(max_digits=10, decimal_places=2)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE
@@ -82,7 +82,7 @@ class Cartao(models.Model):
     cvv = models.CharField(max_length=3)
     numero = models.CharField(max_length=16)
     data_exp = models.DateField(null=True)
-    limite = models.DecimalField(max_digits=5, decimal_places=2)
+    limite = models.DecimalField(max_digits=10, decimal_places=2)
     tipo = models.CharField(max_length=255)
     conta = models.ForeignKey(
         Conta,
@@ -94,9 +94,20 @@ class Cartao(models.Model):
         return f"{self.tipo} - {self.numero}"
 
 
+class CartaoGasto(models.Model):
+    """Tabela de gastos de um cartão"""
+    cartao = models.ForeignKey(
+        Cartao,
+        related_name='gastos',
+        on_delete=models.PROTECT
+    )
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    nome = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
 class Emprestimo(models.Model):
-    valorRequisitado = models.DecimalField(max_digits=5, decimal_places=2)
-    valorTotal = models.DecimalField(max_digits=5, decimal_places=2)
+    valorRequisitado = models.DecimalField(max_digits=10, decimal_places=2)
+    valorTotal = models.DecimalField(max_digits=10, decimal_places=2)
     data_pedido = models.DateTimeField(default=timezone.now)
     qtd_parcelas = models.IntegerField()
     conta = models.ForeignKey(
@@ -111,8 +122,8 @@ class Emprestimo(models.Model):
     
 
 class ParcelaEmprestimo(models.Model):
-    valorParcela = models.DecimalField(max_digits=5, decimal_places=2)
-    valorPago = models.DecimalField(max_digits=5, decimal_places=2)
+    valorParcela = models.DecimalField(max_digits=10, decimal_places=2)
+    valorPago = models.DecimalField(max_digits=10, decimal_places=2)
     numParcela = models.IntegerField()
     dataVencimento = models.DateField(null=False)
     dataPaga = models.DateField(null=True)

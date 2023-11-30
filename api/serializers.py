@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Conta, Transferencia, Cartao, Emprestimo, ParcelaEmprestimo
+from core.models import Conta, Transferencia, Cartao, Emprestimo, ParcelaEmprestimo, CartaoGasto
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -80,3 +80,20 @@ class CartaoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "A data de expiração deve ser no futuro.")
         return value
+
+
+class SendCartaoGastoSerializer(serializers.Serializer):
+    nome = serializers.CharField(max_length=255)
+    cvv = serializers.CharField(max_length=3)
+    numero = serializers.CharField(max_length=16)
+    data_exp = serializers.DateField()
+
+
+class CartaoGastoSerializer(serializers.ModelSerializer):
+    cartao = SendCartaoGastoSerializer(many=False)
+    
+    class Meta:
+        model = CartaoGasto
+        fields = ['id', 'cartao', 'valor', 'nome', 'created_at']
+        read_only_fields = ['id', 'created_at']
+

@@ -11,11 +11,12 @@ from django.db import IntegrityError, DatabaseError, InternalError, transaction
 
 
 from rest_framework_simplejwt import authentication as authenticationJWT
-from core.models import Conta, Transferencia, Cartao, Emprestimo
+from core.models import Conta, Transferencia, Cartao, Emprestimo, CartaoGasto
 from datetime import datetime, timedelta
 from datetime import date
 from api import serializers
 import random
+
 
 from rest_framework.decorators import action, api_view
 
@@ -227,6 +228,39 @@ class CartaoViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         return cvv
 
 
+class CartaoGastoViewset(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin):
+    queryset = CartaoGasto.objects.all()
+    serializer_class = serializers.CartaoGastoSerializer
+    authentication_classes = [authenticationJWT.JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        """Função para criar um gasto no cartão"""
+        serializer = serializers.CartaoGastoSerializer(data=request.data)
+
+        if serializer.is_valid():
+            conta = Conta.objects.filter(user=request.user).first()
+            cartao = serializer.validated_data.get("cartao")
+            cartao_selecionado = get_object_or_404(Cartao.objects.filter(conta=conta).filter(
+                numero=cartao["numero"]).filter(cvv=cartao["cvv"]).filter(nome=cartao["nome"]))
+
+            
+            if (serializer.validated_data.get("valor") > cartao_selecionado.limite):
+                return Response({"message": "Limite insuficiente"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            gasto = CartaoGasto.objects.create(
+                cartao=cartao_selecionado,
+                valor=serializer.validated_data.get("valor"),
+                nome=serializer.validated_data.get("nome")
+            )
+            gasto.save()
+            
+            return Response({"message": "Gasto salvo"}, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
 class EmprestimoViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = Emprestimo.objects.all()
     serializer_class = serializers.EmprestimoSerializer
@@ -251,11 +285,13 @@ class EmprestimoViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
             if conta:
                 # Se o saldo em conta vezes 3.2 for maior ou igual ao empréstimo desejado, aprovado
-                condicao = float(conta.saldo) * 3.2 >= serializer.validated_data['valorRequisitado']
+                condicao = float(
+                    conta.saldo) * 3.2 >= serializer.validated_data['valorRequisitado']
 
                 emprestimo = Emprestimo.objects.create(
                     valorRequisitado=serializer.validated_data['valorRequisitado'],
-                    valorTotal=Decimal(float(serializer.validated_data['valorRequisitado']) * 1.8),
+                    valorTotal=Decimal(
+                        float(serializer.validated_data['valorRequisitado']) * 1.8),
                     qtd_parcelas=serializer.validated_data['qtd_parcelas'],
                     conta=conta,
                     status="Aprovado" if condicao else "Não Aprovado - O valor solicitado é muito para sua conta"
@@ -264,7 +300,8 @@ class EmprestimoViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
                 emprestimo.save()
 
                 # Crie um novo serializer para o objeto do empréstimo
-                emprestimo_serializer = serializers.EmprestimoSerializer(emprestimo)
+                emprestimo_serializer = serializers.EmprestimoSerializer(
+                    emprestimo)
 
                 return Response(emprestimo_serializer.data, status=status.HTTP_201_CREATED)
 
