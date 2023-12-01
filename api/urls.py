@@ -16,6 +16,7 @@ router.register('transferencias', views.TransferenciaViewSet)
 router.register('cartoes', views.CartaoViewSet)
 router.register('gastos', views.CartaoGastoViewset)
 router.register('emprestimos', views.EmprestimoViewSet)
+router.register('extrato', views.ExtratoViewSet)
 
 app_name = 'api'
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Conta, Transferencia, Cartao, Emprestimo, ParcelaEmprestimo, CartaoGasto
+from core.models import Conta, Transferencia, Cartao, Emprestimo, ParcelaEmprestimo, CartaoGasto, Extrato
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -16,6 +16,14 @@ class AccountDetailSerializer(AccountSerializer):
         fields = AccountSerializer.Meta.fields + ['id', 'saldo', 'created_at']
         read_only_fields = AccountSerializer.Meta.read_only_fields + \
             ['id', 'saldo', 'created_at']
+
+
+class ExtratoSerializer(serializers.ModelSerializer):
+    conta = AccountSerializer(read_only=True, many=False)
+    class Meta:
+        model = Extrato
+        fields = ['id', 'conta', 'valor', 'tipo']
+        read_only_fields = ['id', 'conta', 'valor', 'tipo']
 
 
 class TransferenciaSerializer(serializers.ModelSerializer):

@@ -11,11 +11,14 @@ from django.db import IntegrityError, DatabaseError, InternalError, transaction
 
 
 from rest_framework_simplejwt import authentication as authenticationJWT
-from core.models import Conta, Transferencia, Cartao, Emprestimo, CartaoGasto
+from core.models import Conta, Transferencia, Cartao, Emprestimo, CartaoGasto, Extrato
 from datetime import datetime, timedelta
 from datetime import date
 from api import serializers
 import random
+from django.utils import timezone
+from django.db.models import Sum
+
 
 
 from rest_framework.decorators import action, api_view
@@ -95,7 +98,15 @@ class AccountViewSet(viewsets.ModelViewSet):
             valor_deposito = Decimal(conta.saldo)
 
             conta.saldo = saldo + valor_deposito
+            
+            extrato = Extrato.objects.create(
+                conta=conta,
+                valor=valor_deposito,
+                tipo="Deposito"
+            )
+            
             conta.save()
+            extrato.save()
             return Response({"saldo": conta.saldo}, status=status.HTTP_200_OK)
 
         return Response(serializer_recebido.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -112,12 +123,36 @@ class AccountViewSet(viewsets.ModelViewSet):
             if saldo >= valor_saque:
                 desconto = max(0, saldo - valor_saque)
                 conta.saldo = desconto
+
+                extrato = Extrato.objects.create(
+                conta=conta,
+                valor=valor_saque,
+                tipo="Saque"
+                )
+            
                 conta.save()
+                extrato.save()
                 return Response({"saldo": conta.saldo}, status=status.HTTP_200_OK)
 
             return Response({'message': 'Saldo insuficiente'}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(serializer_recebido.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExtratoViewSet(viewsets.ModelViewSet):
+    queryset = Extrato.objects.all()
+    serializer_class = serializers.ExtratoSerializer
+    authentication_classes = [authenticationJWT.JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Retrieve conta for authenticated user."""
+        conta = Conta.objects.filter(user=self.request.user).first()
+        queryset = self.queryset
+
+        return queryset.filter(
+            conta=conta
+        ).order_by('-id').distinct()
 
 
 class TransferenciaViewSet(viewsets.GenericViewSet,
@@ -253,8 +288,16 @@ class CartaoGastoViewset(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.
             cartao = serializer.validated_data.get("cartao")
             cartao_selecionado = get_object_or_404(Cartao.objects.filter(conta=conta).filter(
                 numero=cartao["numero"]).filter(cvv=cartao["cvv"]).filter(nome=cartao["nome"]))
+            
+            mes_atual = timezone.now().month
 
-            if (serializer.validated_data.get("valor") > cartao_selecionado.limite):
+            soma_valores = CartaoGasto.objects.filter(
+                cartao=cartao_selecionado,
+                created_at__month=mes_atual
+            ).aggregate(Sum('valor'))
+
+            soma_total = soma_valores['valor__sum'] or 0
+            if (serializer.validated_data.get("valor") > cartao_selecionado.limite or soma_total > cartao_selecionado.limite):
                 return Response({"message": "Limite insuficiente"}, status=status.HTTP_401_UNAUTHORIZED)
 
             gasto = CartaoGasto.objects.create(

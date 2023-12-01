@@ -104,6 +104,16 @@ class CartaoGasto(models.Model):
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     nome = models.CharField(max_length=255)
     created_at = models.DateTimeField(default=timezone.now)
+    
+class Extrato(models.Model):
+    conta = models.ForeignKey(
+        Conta,
+        related_name='extrato',
+        on_delete=models.DO_NOTHING
+    )
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    tipo = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
 
 class Emprestimo(models.Model):
     valorRequisitado = models.DecimalField(max_digits=10, decimal_places=2)
@@ -115,7 +125,7 @@ class Emprestimo(models.Model):
         related_name='emprestimos',
         on_delete=models.DO_NOTHING
     )
-    status = models.CharField(max_length=20, default='Em Análise')
+    status = models.CharField(max_length=255, default='Em Análise')
     
     def __str__(self) -> str:
         return f"{self.data_pedido} - {self.valorTotal}"
